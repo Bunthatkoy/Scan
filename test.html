@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Scanner</title>
+</head>
+<body>
+    <h2>Scan QR Code</h2>
+    <button id="startButton">📷 Start Camera</button>
+    <video id="video" width="300" height="300" autoplay style="display:none;"></video>
+    <canvas id="canvas" hidden></canvas>
+    <p id="status">🔹 Click "Start Camera" to scan a QR code.</p>
+    <p id="result">QR Code Result: </p>
+
+    <!-- Load jsQR Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const resultText = document.getElementById('result');
+        const statusText = document.getElementById('status');
+        const startButton = document.getElementById('startButton');
+
+        async function requestCameraPermissions() {
+            try {
+                // Request permission explicitly
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = stream;
+                video.style.display = "block";
+                startButton.style.display = "none";
+                statusText.textContent = "✅ Camera access granted! Point at a QR code.";
+                scanQRCode();
+            } catch (error) {
+                if (error.name === "NotAllowedError") {
+                    statusText.textContent = "❌ Camera permission denied. Please allow access in browser settings.";
+                } else if (error.name === "NotFoundError") {
+                    statusText.textContent = "❌ No camera found on this device.";
+                } else {
+                    statusText.textContent = "❌ Error accessing camera: " + error.message;
+                }
+                console.error("Camera error:", error);
+            }
+        }
+
+        function scanQRCode() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
+                
+                if (qrCode) {
+                    resultText.textContent = "✅ QR Code Found: " + qrCode.data;
+                } else {
+                    requestAnimationFrame(scanQRCode);
+                }
+            } else {
+                requestAnimationFrame(scanQRCode);
+            }
+        }
+
+        startButton.addEventListener("click", requestCameraPermissions);
+    </script>
+</body>
+</html>
